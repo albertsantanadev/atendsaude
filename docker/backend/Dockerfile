@@ -15,11 +15,6 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copia primeiro apenas os manifests para aproveitar o cache de camadas do
-# Docker (o composer install só roda de novo se composer.json/lock mudarem).
-# ATENÇÃO: backend/composer.json ainda não existe (será criado na Fase 2 -
-# scaffold do Laravel). O build desta imagem só será bem-sucedido a partir
-# da Fase 2.
 COPY backend/composer.json backend/composer.lock* ./
 RUN composer install --no-interaction --no-progress --prefer-dist
 
