@@ -13,12 +13,17 @@ RUN apk add --no-cache \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
 WORKDIR /var/www/html
 
 COPY backend/composer.json backend/composer.lock* ./
-RUN composer install --no-interaction --no-progress --prefer-dist
+
+RUN composer install --no-interaction --no-progress --prefer-dist --no-scripts --no-autoloader
 
 COPY backend/ .
+
+RUN composer dump-autoload --optimize
 
 COPY docker/backend/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh && sed -i 's/\r$//' /usr/local/bin/entrypoint.sh
