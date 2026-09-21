@@ -1,0 +1,275 @@
+openapi: 3.0.3
+info:
+  title: AtendSaude API
+  description: >
+    API REST para registro e acompanhamento de Solicitações de Atendimento
+    encaminhadas a unidades públicas de saúde.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Ambiente local (Docker Compose)
+
+tags:
+  - name: Solicitacoes
+    description: Registro e acompanhamento de solicitações de atendimento
+  - name: Health
+    description: Verificação de disponibilidade da API e do banco de dados
+
+paths:
+  /solicitacoes:
+    get:
+      tags: [Solicitacoes]
+      summary: Lista solicitações com paginação e filtros
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: per_page
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 15 }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/StatusSolicitacao' }
+        - name: categoria
+          in: query
+          schema: { $ref: '#/components/schemas/CategoriaSolicitacao' }
+        - name: prioridade
+          in: query
+          schema: { $ref: '#/components/schemas/PrioridadeSolicitacao' }
+      responses:
+        '200':
+          description: Lista paginada de solicitações
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitacaoListEnvelope'
+    post:
+      tags: [Solicitacoes]
+      summary: Cria uma nova solicitação de atendimento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitacaoCreateRequest'
+            examples:
+              padrao:
+                value:
+                  nome_solicitante: "Maria da Silva"
+                  categoria: "CONSULTA"
+                  prioridade: "ALTA"
+                  descricao: "Encaminhamento para consulta cardiológica"
+              urgente:
+                value:
+                  nome_solicitante: "João Souza"
+                  categoria: "VACINACAO"
+                  prioridade: "URGENTE"
+                  descricao: "Necessita vacina com urgência"
+                  justificativa_prioridade: "Exposição confirmada a doença transmissível."
+      responses:
+        '201':
+          description: Solicitação criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitacaoEnvelope'
+        '422':
+          description: Dados inválidos (ex.; URGENTE sem justificativa)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorEnvelope'
+              example:
+                message: "Os dados informados são inválidos."
+                errors:
+                  justificativa_prioridade:
+                    - "O campo justificativa da prioridade é obrigatório quando a prioridade é URGENTE."
+
+  /solicitacoes/{id}:
+    get:
+      tags: [Solicitacoes]
+      summary: Consulta os detalhes de uma solicitação
+      parameters:
+        - $ref: '#/components/parameters/SolicitacaoId'
+      responses:
+        '200':
+          description: Detalhes da solicitação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitacaoEnvelope'
+        '404':
+          description: Solicitação não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              example:
+                message: "Solicitação não encontrada."
+
+  /solicitacoes/{id}/status:
+    patch:
+      tags: [Solicitacoes]
+      summary: Atualiza o status de uma solicitação respeitando a máquina de estados
+      parameters:
+        - $ref: '#/components/parameters/SolicitacaoId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/StatusSolicitacao'
+            example:
+              status: "EM_ANALISE"
+      responses:
+        '200':
+          description: Status atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitacaoEnvelope'
+        '422':
+          description: Transição de status inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorEnvelope'
+              example:
+                message: "Transição de status inválida."
+                errors:
+                  status:
+                    - "Não é permitido mudar de CONCLUIDA para EM_ANALISE."
+        '404':
+          description: Solicitação não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Verifica a disponibilidade da API e a conexão com o PostgreSQL
+      responses:
+        '200':
+          description: API e banco de dados operacionais
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "ok"
+                database: "connected"
+                timestamp: "2026-09-17T13:00:00Z"
+        '503':
+          description: Banco de dados indisponível
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "degraded"
+                database: "unavailable"
+                timestamp: "2026-09-17T13:00:00Z"
+
+components:
+  parameters:
+    SolicitacaoId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      example: "b1f2e3a4-5678-90ab-cdef-1234567890ab"
+
+  schemas:
+    CategoriaSolicitacao:
+      type: string
+      enum: [CONSULTA, EXAME, VACINACAO, OUTRO]
+
+    PrioridadeSolicitacao:
+      type: string
+      enum: [BAIXA, MEDIA, ALTA, URGENTE]
+
+    StatusSolicitacao:
+      type: string
+      enum: [RECEBIDA, EM_ANALISE, AGENDADA, CONCLUIDA, CANCELADA]
+
+    Solicitacao:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        protocolo: { type: string, example: "SOL-2026-0001" }
+        nome_solicitante: { type: string }
+        categoria: { $ref: '#/components/schemas/CategoriaSolicitacao' }
+        prioridade: { $ref: '#/components/schemas/PrioridadeSolicitacao' }
+        status: { $ref: '#/components/schemas/StatusSolicitacao' }
+        descricao: { type: string }
+        justificativa_prioridade: { type: string, nullable: true }
+        data_criacao: { type: string, format: date-time }
+        data_atualizacao: { type: string, format: date-time }
+      required: [id, protocolo, nome_solicitante, categoria, prioridade, status, descricao, data_criacao, data_atualizacao]
+
+    SolicitacaoCreateRequest:
+      type: object
+      properties:
+        nome_solicitante: { type: string, maxLength: 150 }
+        categoria: { $ref: '#/components/schemas/CategoriaSolicitacao' }
+        prioridade: { $ref: '#/components/schemas/PrioridadeSolicitacao' }
+        descricao: { type: string }
+        justificativa_prioridade:
+          type: string
+          nullable: true
+          description: Obrigatório quando prioridade = URGENTE
+      required: [nome_solicitante, categoria, prioridade, descricao]
+
+    SolicitacaoEnvelope:
+      type: object
+      properties:
+        data: { $ref: '#/components/schemas/Solicitacao' }
+
+    SolicitacaoListEnvelope:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Solicitacao' }
+        meta:
+          type: object
+          properties:
+            current_page: { type: integer }
+            per_page: { type: integer }
+            total: { type: integer }
+            last_page: { type: integer }
+        links:
+          type: object
+          properties:
+            first: { type: string, nullable: true }
+            last: { type: string, nullable: true }
+            prev: { type: string, nullable: true }
+            next: { type: string, nullable: true }
+
+    ErrorEnvelope:
+      type: object
+      properties:
+        message: { type: string }
+
+    ValidationErrorEnvelope:
+      type: object
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+    HealthResponse:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        database: { type: string, enum: [connected, unavailable] }
+        timestamp: { type: string, format: date-time }
