@@ -1,0 +1,112 @@
+# ficheiro: .github/workflows/ci.yml
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    name: Backend (Laravel/PHPUnit)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: atendsaude_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: atendsaude_test
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo, pdo_pgsql, mbstring, zip, bcmath
+          coverage: none
+
+      - name: Cache de dependências do Composer
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Instalar dependências (Composer)
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Preparar ambiente de teste
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
+      - name: Lint (Laravel Pint)
+        run: ./vendor/bin/pint --test
+
+      - name: Rodar migrations
+        run: php artisan migrate --force
+
+      - name: Rodar testes (PHPUnit)
+        run: php artisan test
+
+  frontend-tests:
+    name: Frontend (React/Vitest)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências (npm)
+        run: npm ci
+
+      # Assume o script "lint" já presente no template padrão do Vite (react-ts):
+      # "lint": "eslint . --ext ts,tsx"
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Checagem de tipos (TypeScript)
+        run: npx tsc --noEmit
+
+      - name: Rodar testes (Vitest)
+        run: npm run test
+
+      - name: Verificar build de produção (Vite)
+        run: npm run build
