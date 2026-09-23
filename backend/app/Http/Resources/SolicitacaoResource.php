@@ -13,9 +13,12 @@ class SolicitacaoResource extends JsonResource
             'id' => $this->id,
             'protocolo' => $this->protocolo,
             'nome_solicitante' => $this->nome_solicitante,
-            'categoria' => $this->categoria->value,
-            'prioridade' => $this->prioridade->value,
-            'status' => $this->status->value,
+            
+            // Correção aqui: Lê o value se for Enum, ou devolve a própria string se não for
+            'categoria' => $this->categoria?->value ?? $this->categoria,
+            'prioridade' => $this->prioridade?->value ?? $this->prioridade,
+            'status' => $this->status?->value ?? $this->status,
+            
             'descricao' => $this->descricao,
             'justificativa_prioridade' => $this->justificativa_prioridade,
             'data_criacao' => $this->data_criacao?->toIso8601String(),
