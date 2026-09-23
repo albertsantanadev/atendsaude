@@ -1,0 +1,42 @@
+name: CD - Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy para produção
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /srv/atendsaude
+
+            echo "==> Atualizando código"
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "==> Subindo containers (build incremental)"
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --build
+
+            echo "==> Rodando migrations"
+            docker compose -f docker-compose.prod.yml exec -T backend php artisan migrate --force
+
+            echo "==> Limpando imagens antigas"
+            docker image prune -f
+
+      - name: Notificar falha
+        if: failure()
+        run: echo "Deploy falhou — verificar logs do job acima antes de investigar o servidor."
