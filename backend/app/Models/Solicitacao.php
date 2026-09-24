@@ -14,11 +14,20 @@ use Illuminate\Database\Eloquent\Model;
 class Solicitacao extends Model
 {
     use HasFactory, HasUuids;
+
     protected $table = 'solicitacoes';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
+
     const CREATED_AT = 'data_criacao';
+
     const UPDATED_AT = 'data_atualizacao';
+
+    protected $attributes = [
+        'status' => StatusSolicitacao::RECEBIDA,
+    ];
 
     protected $fillable = [
         'protocolo',
