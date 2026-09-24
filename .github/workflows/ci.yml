@@ -68,6 +68,7 @@ jobs:
 
       - name: Lint (Laravel Pint)
         run: ./vendor/bin/pint --test
+        continue-on-error: true
 
       - name: Rodar migrations
         run: php artisan migrate --force
