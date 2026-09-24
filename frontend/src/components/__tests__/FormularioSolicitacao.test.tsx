@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FormularioSolicitacao } from '../FormularioSolicitacao';
+import '@testing-library/jest-dom';
 
 describe('FormularioSolicitacao', () => {
   it('não mostra o campo de justificativa quando a prioridade não é URGENTE', () => {
