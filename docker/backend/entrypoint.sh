@@ -31,7 +31,7 @@ if [ "$APP_ENV" != "production" ]; then
 fi
 
 echo "[entrypoint] A executar migrations..."
-php artisan migrate:fresh --force
+php artisan migrate --force
 
 echo "[entrypoint] A executar seeders..."
 php artisan db:seed --force || echo "[entrypoint] Nenhum seeder executado (ainda não implementado ou já semeado)."
