@@ -21,11 +21,7 @@ Aplicação full stack para registrar, consultar, filtrar e acompanhar solicita�
 
 ## 🌐 Live Demo & Deploy
 
-**Live Demo:** `[EM BREVE — URL a ser definida após o deploy]`
-
-> 📌 **Para a banca avaliadora da seleção V-Lab:** o critério de avaliação do desafio é a **execução local reproduzível via Docker Compose**, não o link acima. O deploy em nuvem é um objetivo secundário deste projeto (demonstração para portfólio pessoal) e não faz parte do escopo do edital. Avalie o projeto seguindo a seção [Instalação e Execução](#-instalação-e-execução-docker-compose) abaixo — o ambiente sobe completo, com dados de exemplo, em um único comando.
-
-O guia de deploy (VPS + Docker Compose ou Render) está em [`docs/deploy.md`](./docs/deploy.md).
+**Live Demo:** https://atendsaude-uo48y9cey-albert-8553.vercel.app/
 
 ---
 
